@@ -1,5 +1,8 @@
 all: backend frontend
 
+clear:
+	rm backend frontend BACKF*
+
 backend:
 	gcc BackEnd.c funcs.c users_lib.h users_lib.o -o backend
 
