@@ -35,11 +35,12 @@ int loadItemsFile(char* filename){
     // guarda o nome do ficheiro dos items
     itemsfilepath = filename;
 
-    // leitura do ficheiro com a estrutura de dados
-    items aux;
-    while(fread(&aux, sizeof(items), 1, f))
+    // contagem dos items do ficheiro
+    char aux[500];
+    while(fgets(aux, sizeof(aux), f))
         count_items++;
 
+    // reabertura do ficheiro
     fclose(f);
     f = fopen(filename, "rw");
     if(f == NULL){
@@ -54,8 +55,10 @@ int loadItemsFile(char* filename){
         return -1;
     }
     // guardar a estrutura de dados
-    for(int i = 0; i < count_items; i++)
-        fread((leilao+i), sizeof(items), 1, f);
+    for(int i = 0; i < count_items; i++) {
+        fgets(aux, sizeof(aux), f);
+        sscanf(aux,"%d %s %s %f %f %d", &(leilao + i)->id, (leilao + i)->nome, (leilao + i)->categoria, &(leilao + i)->preco, &(leilao + i)->preco_ja, &(leilao + i)->durancao);
+    }
 
     fclose(f);
     return count_items;
@@ -71,7 +74,7 @@ void printItems(int type, char* filter){
 
     printf("\n>> Lista de items <<\n");
     for(int i = 0; i < count_items; i++)
-        printf("%d: %s %s %d€ %d€ %ds\n", (leilao+i)->id, (leilao+i)->nome, (leilao+i)->categoria, (leilao+i)->preco, (leilao+i)->preco_ja, (leilao+i)->durancao);
+        printf("%d: %s %s %.2f€ %.2f€ %ds\n", (leilao+i)->id, (leilao+i)->nome, (leilao+i)->categoria, (leilao+i)->preco, (leilao+i)->preco_ja, (leilao+i)->durancao);
 
     fclose(f);
 

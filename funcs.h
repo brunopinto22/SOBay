@@ -8,16 +8,42 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+// vars globais
+
+#define BACK_FIFO "BACKFIFO"
+#define BACK_FRONT "BACKFRONT%d"
+#define RD 0
+#define WR 1
 #define MAX_USERS 20
 #define MAX_PROMOTORES 10
 #define MAX_ITEMS 30
 
+// estruturas
+
+typedef struct dataMSG dataMSG;
+struct dataMSG {
+
+    pid_t pid;
+    char user[100];
+    char pass[100];
+    int envio;
+
+};
+
+typedef struct onlineusers onlineusers, *ponlineusers;
+struct onlineusers{
+
+    int pid;
+    char nome[100];
+
+};
 
 typedef struct items items, *pitems;
 struct items{
 
-    int id, preco, preco_ja, durancao;
+    int id, durancao;
     char nome[50], categoria[50];
+    float preco, preco_ja;
 
 };
 
@@ -27,6 +53,9 @@ struct promotores{
     char *nome;
 
 };
+
+
+// funcoes
 
 int countWords(char* string, int len);
 // Le a string e conta as palavras que a mesma contem
