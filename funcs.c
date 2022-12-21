@@ -5,13 +5,19 @@
 #include "funcs.h"
 #include <string.h>
 
-
+int id = 0;
 char* itemsfilepath;        // ficheiro de items
 char* promsfilepath;        // ficheiro de promotores
 int count_proms = 0;        // nº de promotores
 int count_items = 0;        // nº de items
 pitems leilao = NULL;       // estrutura de items
 pproms promotores = NULL;   // estrutura de promotores
+
+
+int getId(){
+    id++;
+    return id;
+}
 
 
 int countWords(char* string, int len){
@@ -24,6 +30,7 @@ int countWords(char* string, int len){
             count++;
     return count;
 }
+
 
 int loadItemsFile(char* filename){
     FILE *f = fopen(filename, "rw");
@@ -42,14 +49,14 @@ int loadItemsFile(char* filename){
 
     // reabertura do ficheiro
     fclose(f);
-    f = fopen(filename, "rw");
+    f = fopen(itemsfilepath, "rw");
     if(f == NULL){
         printf("\n\033[31mErro nao foi possivel abrir o ficheiro: %s\033[0m\n",filename);
         return -1;
     }
 
     // alocacao da estrutura de dados
-    leilao = realloc(leilao,count_items*sizeof(items));
+    leilao = realloc(leilao,count_items*sizeof(item));
     if(leilao == NULL){
         printf("\n\033[31mErro nao foi possivel alocar o leilao em memoria\033[0m\n");
         return -1;
@@ -57,13 +64,42 @@ int loadItemsFile(char* filename){
     // guardar a estrutura de dados
     for(int i = 0; i < count_items; i++) {
         fgets(aux, sizeof(aux), f);
-        sscanf(aux,"%d %s %s %f %f %d", &(leilao + i)->id, (leilao + i)->nome, (leilao + i)->categoria, &(leilao + i)->preco, &(leilao + i)->preco_ja, &(leilao + i)->durancao);
+        sscanf(aux,"%d %s %s %d %d %d", &(leilao + i)->id, (leilao + i)->nome, (leilao + i)->categoria, &(leilao + i)->preco, &(leilao + i)->preco_ja, &(leilao + i)->duracao);
+        getId();
     }
 
     fclose(f);
     return count_items;
 
 }
+
+
+int addItem(char* aux){
+    // guarda na estrutura
+    count_items++;
+    leilao = realloc(leilao,count_items*sizeof(item));
+    if(leilao == NULL){
+        printf("\n\033[31mErro nao foi possivel alocar o leilao em memoria\033[0m\n");
+        count_items--;
+        return -1;
+    }
+    int i = count_items-1;
+    (leilao + i)->id = getId();
+    sscanf(aux,"%s %s %d %d %d", (leilao + i)->nome, (leilao + i)->categoria, &(leilao + i)->preco, &(leilao + i)->preco_ja, &(leilao + i)->duracao);
+    
+    // guarda no ficheiro
+    FILE *file = fopen(itemsfilepath,"a");
+    if(file==NULL){
+        printf("\nErro no acesso ao ficheiro\n");
+        return -1;
+    }
+    
+    fprintf(file,"\n%d %s %s %d %d %d", (leilao + i)->id, (leilao + i)->nome, (leilao + i)->categoria, (leilao + i)->preco, (leilao + i)->preco_ja, (leilao + i)->duracao);
+    fclose(file);
+
+    return 0;
+}
+
 
 void printItems(int type, char* filter){
     FILE *f = fopen(itemsfilepath, "r");
@@ -74,11 +110,12 @@ void printItems(int type, char* filter){
 
     printf("\n>> Lista de items <<\n");
     for(int i = 0; i < count_items; i++)
-        printf("%d: %s %s %.2f€ %.2f€ %ds\n", (leilao+i)->id, (leilao+i)->nome, (leilao+i)->categoria, (leilao+i)->preco, (leilao+i)->preco_ja, (leilao+i)->durancao);
+        printf("%d: %s %s %d€ %d€ %ds\n", (leilao+i)->id, (leilao+i)->nome, (leilao+i)->categoria, (leilao+i)->preco, (leilao+i)->preco_ja, (leilao+i)->duracao);
 
     fclose(f);
 
 }
+
 
 int loadPromotoresFile(char * filename){
     FILE *f = fopen(filename, "rw");
@@ -116,3 +153,25 @@ int loadPromotoresFile(char * filename){
     return count_proms;
 
 }
+
+/*void preenche_itens(items p){
+
+FILE *file = fopen("FITEMS","wt");
+
+if(file==NULL){
+
+printf("\nErro no acesso ao ficheiro\n");
+return;
+}
+
+printf("%d %s %s %d %d %d",p.id,p.nome,p.categoria,p.preco,p.preco_ja,p.duracao);
+
+fprintf(file,"%d %s %s %d %d %d\n",p.id,p.nome,p.categoria,p.preco,p.preco_ja,p.duracao);
+
+fclose(file);
+}*/
+
+
+
+
+
