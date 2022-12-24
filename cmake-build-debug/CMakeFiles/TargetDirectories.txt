@@ -1,3 +1,0 @@
-C:/Users/HP/Desktop/Bruno/4.Documentos/1.Escola/Uni/2Ano/1Semestre/SO/1.Trabalho Prático/SOBay/cmake-build-debug/CMakeFiles/SOBay.dir
-C:/Users/HP/Desktop/Bruno/4.Documentos/1.Escola/Uni/2Ano/1Semestre/SO/1.Trabalho Prático/SOBay/cmake-build-debug/CMakeFiles/edit_cache.dir
-C:/Users/HP/Desktop/Bruno/4.Documentos/1.Escola/Uni/2Ano/1Semestre/SO/1.Trabalho Prático/SOBay/cmake-build-debug/CMakeFiles/rebuild_cache.dir
