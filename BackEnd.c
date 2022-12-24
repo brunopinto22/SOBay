@@ -1,14 +1,23 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <fcntl.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <signal.h>
-#include <errno.h>
 #include "funcs.h"
-#include "users_lib.h"
+
+
+#define PID getpid()
+
+int fd_backend;
+onlineuser online[MAX_USERS];    // estrutura de utilizadores online
+int online_count = 0;            // nº de utilizadores online
+
+
+void closeBack(){
+    closeAllFronts(online, online_count);
+
+    close(fd_backend);
+    unlink(BACK_FIFO);
+
+    printf("\n\033[32mAdeus\033[0m\n");
+    exit(0);
+
+}
 
 
 int main() {
@@ -16,6 +25,8 @@ int main() {
     char nomeFifoFront[100];
     int size;
     msg mensagem;
+
+    onlineuser aux;
 
     int res;
     fd_set fds;
@@ -56,13 +67,19 @@ int main() {
     // abertura do fifo do backend para leitura
     if (mkfifo(BACK_FIFO,0666) == -1)  {
        if (errno == EEXIST){
-           printf ("Servidor em execução ou fifo já existe\n");
+           printf ("\n\033[31mERRO Servidor em execução\n");
+           return 1;
        }
        printf("\n\033[31mERRO nao foi possivel criar o fifo\n");
        return 1;
     }
-    int fd_backend = open (BACK_FIFO,O_RDWR);
+    fd_backend = open (BACK_FIFO,O_RDWR);
     if (fd_backend == -1){ printf("\n\033[31mERRO nao foi possivel abrir o fifo\n"); return 1; }
+
+
+    // handlers de sinais
+    signal(SIGINT, closeBack);
+
 
     printf("\n-- Backend\n\n>> ");
     do{
@@ -95,22 +112,29 @@ int main() {
             if(strcmp(command, "users") == 0){
                 if(countWords(arguments, strlen(arguments)) != 0)
                     printf("\n\033[31mERRO na formatação: users \033[0m\n");
-                else{
-                    printf("\nA carregar lista de users...\n");
-                }
+                else
+                    printOnlineUsers(online, online_count);
+
 
             } else if(strcmp(command, "list") == 0){
                 if(countWords(arguments, strlen(arguments)) != 0)
                     printf("\n\033[31mERRO na formatação: list \033[0m\n");
                 else{
                     printf("\nA carregar lista de items...\n");
+                    printItems(0," ",0);
                 }
 
             } else if(strcmp(command, "kick") == 0){
                 if(countWords(arguments, strlen(arguments)) != 1)
                     printf("\n\033[31mERRO na formatação: kick <username>\033[0m\n");
                 else{
-                    printf("\nA expulsar %s...\n", arguments);
+                    int i = deleteOnlineUser(online, arguments, &online_count);
+                    if(i > 0)
+                        printf("\n\033[35m> User [%d] : foi expluso\033[0m\n", i);
+                    union sigval val;
+                    val.sival_int = 0;
+                    sigqueue(i,SIGUSR1, val);
+                    
                 }
 
             } else if(strcmp(command, "prom") == 0){
@@ -135,7 +159,7 @@ int main() {
                 }
 
             } else if(strcmp(command, "close") == 0)
-                break;
+                closeBack();
             else
                 printf("\nERRO - comando nao existe\n");
 
@@ -155,6 +179,7 @@ int main() {
                     }
                     else if (isUserValid(mensagem.user, mensagem.pass) == 0) {
                         printf("\n\033[31m> User [%d] : Conta nao existe\033[0m", mensagem.pid);
+                        strcpy(mensagem.message, "\n\033[31m>Conta nao existe\033[0m\n");
                         mensagem.value = 1;
 
                         //resposta ao frontend
@@ -165,15 +190,39 @@ int main() {
                         close(fd_frontend);
                     }
                     else {
-                        mensagem.value = 0;
-                        printf("\n\033[32m> User [%d] : Fez login\033[0m\n", mensagem.pid);
 
-                        //resposta ao frontend
-                        sprintf(nomeFifoFront, FRONT_FIFO, mensagem.pid);
-                        int fd_frontend = open(nomeFifoFront, O_WRONLY);
-                        if(fd_frontend == -1){ printf("\n\033[31mERRO nao foi possivel abrir o fifo do User [%d]\n", mensagem.pid); return 1; }
-                        int s2 = write(fd_frontend, &mensagem, sizeof(msg));
-                        close(fd_frontend);
+                        aux.pid = mensagem.pid;
+                        strcpy(aux.nome, mensagem.user);
+                        int i = addOnlineUser(online, aux, &online_count);
+
+                        if(i == 1 || i == -1){
+                            if(i == 1)
+                                strcpy(mensagem.message, "\n\033[31m>Já esta Logado\033[0m\n");
+                            else
+                                strcpy(mensagem.message, "\n\033[31m>O Máximo de Utilizadores foi atingido\033[0m\n");
+
+                            printf("\n\033[31m> User [%d] : %s\033[0m", mensagem.pid, mensagem.message);
+                            
+                            mensagem.value = 1;
+
+                            //resposta ao frontend
+                            sprintf(nomeFifoFront, FRONT_FIFO, mensagem.pid);
+                            int fd_frontend = open(nomeFifoFront, O_WRONLY);
+                            if(fd_frontend == -1){ printf("\n\033[31mERRO nao foi possivel abrir o fifo do User [%d]\n", mensagem.pid); return 1; }
+                            int s2 = write(fd_frontend, &mensagem, sizeof(msg));
+                            close(fd_frontend);
+                        } else {
+                            mensagem.value = 0;
+                            printf("\n\033[32m> User [%d] : Fez login\033[0m\n", mensagem.pid);
+
+                            //resposta ao frontend
+                            sprintf(nomeFifoFront, FRONT_FIFO, mensagem.pid);
+                            int fd_frontend = open(nomeFifoFront, O_WRONLY);
+                            if(fd_frontend == -1){ printf("\n\033[31mERRO nao foi possivel abrir o fifo do User [%d]\n", mensagem.pid); return 1; }
+                            int s2 = write(fd_frontend, &mensagem, sizeof(msg));
+                            close(fd_frontend);
+                        }
+                        
                     }
 
                 } else if(strcmp(mensagem.command,"sell") == 0) {
@@ -181,9 +230,9 @@ int main() {
                         mensagem.value = 0;
                         printf("\n\033[33m> User [%d] : Licitou <%s>\033[0m\n", mensagem.pid, mensagem.arguments);
                     }
-                    else
+                    else{
                         mensagem.value = 1;
-                    
+                } 
 
                     //resposta ao frontend
                     sprintf(nomeFifoFront, FRONT_FIFO, mensagem.pid);
@@ -191,7 +240,66 @@ int main() {
                     if(fd_frontend == -1){ printf("\n\033[31mERRO nao foi possivel abrir o fifo do User [%d]\n", mensagem.pid); return 1; }
                     int s2 = write(fd_frontend, &mensagem, sizeof(msg));
                     close(fd_frontend);
-                }
+
+                }else if(strcmp(mensagem.command,"cash") == 0) {
+
+                    if( loadUsersFile(FUSERS) != 1 ){ 
+                    mensagem.value = 0;
+                    mensagem.cash=getUserBalance(mensagem.user);
+                    printf("\n\033[33m> User [%d] : Consultou o saldo\033[0m\n", mensagem.pid);
+                    }else {
+                        mensagem.value=1;
+                    }
+
+                    //resposta ao frontend
+                    sprintf(nomeFifoFront, FRONT_FIFO, mensagem.pid);
+                    int fd_frontend = open(nomeFifoFront, O_WRONLY);
+                    if(fd_frontend == -1){ printf("\n\033[31mERRO nao foi possivel abrir o fifo do User [%d]\n", mensagem.pid); return 1; }
+                    int s2 = write(fd_frontend, &mensagem, sizeof(msg));
+                    close(fd_frontend);
+
+                }else if(strcmp(mensagem.command,"add") == 0) {
+
+                    if( loadUsersFile(FUSERS) != 1 ){ 
+                    mensagem.value = 0;
+                    int guardar_balance=getUserBalance(mensagem.user);
+                    updateUserBalance(mensagem.user,mensagem.valor_add+guardar_balance);
+                    saveUsersFile(FUSERS);
+                    printf("\n\033[33m> User [%d] : Adicionou %d €\033[0m\n", mensagem.pid,mensagem.valor_add);
+                    }else {
+                        mensagem.value=1;
+                    }
+
+                    //resposta ao frontend
+                    sprintf(nomeFifoFront, FRONT_FIFO, mensagem.pid);
+                    int fd_frontend = open(nomeFifoFront, O_WRONLY);
+                    if(fd_frontend == -1){ printf("\n\033[31mERRO nao foi possivel abrir o fifo do User [%d]\n", mensagem.pid); return 1; }
+                    int s2 = write(fd_frontend, &mensagem, sizeof(msg));
+                    close(fd_frontend);
+
+            }else if(strcmp(mensagem.command,"exit") == 0) {
+
+                    deleteOnlineUser(online, mensagem.user, &online_count);
+                    printf("\n\033[33m> User [%d] : Desconectou-se\033[0m\n", mensagem.pid);
+
+
+            }else if(strcmp(mensagem.command,"buy") == 0) {
+                    
+                    if(buy_item("FITEMS",mensagem.id_offer,mensagem.offer,mensagem.user,mensagem.pid)==0){
+                        printf("\n\033[33m> User [%d] : Comprou o item %d pelo valor do compre já\033[0m\n", mensagem.pid,mensagem.id_offer);
+                        mensagem.value=0;
+                    }else if(buy_item("FITEMS",mensagem.id_offer,mensagem.offer,mensagem.user,mensagem.pid)==1){
+                        mensagem.value=1;
+                        printf("\n\033[33m> User [%d] : Licitou %d € no item %d\033[0m\n", mensagem.pid,mensagem.offer,mensagem.id_offer);}
+                    else{ 
+                        mensagem.value=2;
+                        printf("\n\033[33m> User [%d] : Efetuou uma licitação inválida no item %d\033[0m\n", mensagem.pid,mensagem.id_offer);}
+                    //resposta ao frontend
+                    sprintf(nomeFifoFront, FRONT_FIFO, mensagem.pid);
+                    int fd_frontend = open(nomeFifoFront, O_WRONLY);
+                    if(fd_frontend == -1){ printf("\n\033[31mERRO nao foi possivel abrir o fifo do User [%d]\n", mensagem.pid); return 1; }
+                    int s2 = write(fd_frontend, &mensagem, sizeof(msg));
+                    close(fd_frontend);
 
             }
 
@@ -199,7 +307,8 @@ int main() {
             printf("\n>> ");
         }
     
-    }while (1);
+    }
+}while (1);
     
 
     /*//--------------------------------------------------------------------------------------------------------------
@@ -280,12 +389,6 @@ int main() {
 
    //--------------------------------------------------------------------------------------------------------------
 */
-    // Fechar\Apagar o fifo do backend
-    close(fd_backend);
-    unlink(BACK_FIFO);
-
-    printf("\nAdeus ;)\n");
-    exit(0);
 
 
 }
