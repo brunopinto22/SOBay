@@ -14,11 +14,16 @@ Auction System for Linux, with a server/client architecture.
 In the terminal use the following command: 
 <br>
 `make rr` - This will initialize/compile all the programms needed
+<br>
+`make clear` - This will clear all the temporary files and the `.exe` files
 <br><br>
 `./backend` - to initialize the backend application
 <br>
 `./frontend <username> <password>` - to initialize the frontend application
-<br><br>
+<br>
+###### It's required 3 ambient variables: `FUSERS`, `FITENS` and `FPROMOTORES`. They're gonna store the path for each file.
+<br>
+
 ## Commands 💻 (Backend)
 * `users` : prints all the users currently online
 * `kick <username>` : kicks the user
