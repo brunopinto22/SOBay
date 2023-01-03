@@ -26,6 +26,7 @@ In the terminal use the following command:
 * `prom` : list all the promotions active
 * `reprom` : reload the promotions programs based on the txt file
 * `cancel` : close the exe of one of the promotors program
+* `time` : prints the system time in seconds
 * `help` : prints a command list
 * `close` :  closes the backend and all the frontends
 <br><br>
