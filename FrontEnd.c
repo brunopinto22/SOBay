@@ -22,11 +22,6 @@ void handlesig(int s, siginfo_t *i, void *v)
 			mensagem.pid = PID;
 			strcpy(mensagem.command, "exit");
 			int fd_backend = open(BACK_FIFO, O_WRONLY);
-			if (fd_backend == -1)
-			{
-				printf("\n\033[31mERRO o servidor não está a correr");
-				exit(1);
-			}
 
 			s = write(fd_backend, &mensagem, sizeof(msg));
 			if (s <= 0)
@@ -42,10 +37,15 @@ void handlesig(int s, siginfo_t *i, void *v)
 		exit(0);
 	}
 
-	fd_frontend = open(nomeFifoFront, O_RDONLY);
+	//fd_frontend = open(nomeFifoFront, O_RDONLY);
 	msg resposta;
-	read(fd_frontend, &resposta, sizeof(msg));
-	printf("\n\033[35m> %s\033[0m\n\n>> ", resposta.message);
+	int size = read(fd_frontend, &resposta, sizeof(msg));
+	if(size > 0)
+		if(n == 4)
+			printf("\n\033[32m> %s\033[0m\n\n>> ", resposta.message);
+		else
+			printf("\n\033[35m> %s\033[0m\n\n>> ", resposta.message);
+		
 }
 
 int main(int argc, char **argv)
@@ -84,7 +84,9 @@ int main(int argc, char **argv)
 	if (fd_backend == -1)
 	{
 		printf("\n\033[31mERRO o servidor não está a correr\033[0m\n");
-		return 1;
+		close(fd_frontend);
+		unlink(nomeFifoFront);
+		exit(1);
 	}
 	s = write(fd_backend, &mensagem, sizeof(msg));
 	if (s <= 0)
@@ -145,11 +147,6 @@ int main(int argc, char **argv)
 				{
 
 					int fd_backend = open(BACK_FIFO, O_WRONLY);
-					if (fd_backend == -1)
-					{
-						printf("\n\033[31mERRO o servidor não está a correr");
-						return 1;
-					}
 
 					s = write(fd_backend, &mensagem, sizeof(msg));
 					if (s <= 0)
@@ -324,8 +321,21 @@ int main(int argc, char **argv)
 				printf("\n\033[31mERRO na formatação: time\033[0m\n");
 			else
 			{
-				printf("\nHora atual em segundos\n");
-				printf("%d", printTime());
+				int fd_backend = open(BACK_FIFO, O_WRONLY);
+				s = write(fd_backend, &mensagem, sizeof(msg));
+				if (s <= 0)
+					printf("\n\033[31mERRO no envio\n");
+				close(fd_backend);
+
+				// receber a resposta
+				int fd_frontend = open(nomeFifoFront, O_RDONLY);
+				if (fd_frontend == -1)
+				{
+					printf("\n\033[31mERRO nao foi possivel abrir o fifo\n");
+					return 1;
+				}
+				read(fd_frontend, &resposta, sizeof(msg));
+				printf("\033[35m\n> Tempo do sistema: %ds\033[0m\n", resposta.value);
 			}
 		}
 		else if (strcmp(command, "buy") == 0)
@@ -338,11 +348,6 @@ int main(int argc, char **argv)
 				{
 
 					int fd_backend = open(BACK_FIFO, O_WRONLY);
-					if (fd_backend == -1)
-					{
-						printf("\n\033[31mERRO o servidor não está a correr");
-						return 1;
-					}
 
 					s = write(fd_backend, &mensagem, sizeof(msg));
 					if (s <= 0)
@@ -388,11 +393,6 @@ int main(int argc, char **argv)
 			{
 
 				int fd_backend = open(BACK_FIFO, O_WRONLY);
-				if (fd_backend == -1)
-				{
-					printf("\n\033[31mERRO o servidor não está a correr");
-					return 1;
-				}
 
 				s = write(fd_backend, &mensagem, sizeof(msg));
 				if (s <= 0)
@@ -421,11 +421,6 @@ int main(int argc, char **argv)
 				{
 
 					int fd_backend = open(BACK_FIFO, O_WRONLY);
-					if (fd_backend == -1)
-					{
-						printf("\n\033[31mERRO o servidor não está a correr");
-						return 1;
-					}
 
 					s = write(fd_backend, &mensagem, sizeof(msg));
 					if (s <= 0)

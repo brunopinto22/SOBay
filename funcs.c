@@ -10,16 +10,44 @@ int getId()
 	return id;
 }
 
+int loadTime(){
+	FILE *f = fopen("CONFIG", "r");
+	if(f == NULL){ // caso o ficheiro nao exista cria-o
+		f = fopen("CONFIG", "w");
+		fprintf(f, "0");
+		fclose(f);
+		return 0;
+	}
+	int time;
+	fscanf(f,"%d",&time);
+
+	return time;
+}
+
+void updateTime(int new){
+	FILE *f = fopen("CONFIG", "w");
+	if(f == NULL){ // caso o ficheiro nao exista
+		printf("\n\033[31mERRO não foi possível abrir o ficheiro CONFIG\n");
+		return;
+	}
+
+	fprintf(f,"%d",new);
+	fclose(f);
+	return;
+
+}
+
 void printHelp_Back()
 {
 	printf("\n>> Lista de Comandos <<\n");
-	printf("\t▹ users\t: mostra todos os utilizadores online\n");
-	printf("\t▹ list\t: lista todos os itens à venda\n");
-	printf("\t▹ prom\t: lista todos os promotores ativos\n");
+	printf("\t▹ users\t\t: mostra todos os utilizadores online\n");
+	printf("\t▹ list\t\t: lista todos os itens à venda\n");
+	printf("\t▹ prom\t\t: lista todos os promotores ativos\n");
 	printf("\t▹ reprom\t: atualiza os promotores\n");
 	printf("\t▹ cancel\t: cancela a execução de um promotor\n");
-	printf("\t▹ kick\t: bane um utilizador que está online\n");
-	printf("\t▹ close\t: fecha o backend\n");
+	printf("\t▹ kick\t\t: bane um utilizador que está online\n");
+	printf("\t▹ time\t\t: obter a hora atual em segundos\n");
+	printf("\t▹ close\t\t: fecha o backend\n");
 }
 
 void printHelp_Front()
@@ -43,7 +71,7 @@ void closeAllFronts(ponlineusers users, int count)
 		sigqueue((users + i)->pid, SIGUSR1, val);
 }
 
-void notificaAllFronts(ponlineusers users, int count, char nome[], int id, int pid)
+void notificaAllFronts(ponlineusers users, int count, char text[], int pid)
 {
 	char nomeFifoFront[100];
 	msg mensagem;
@@ -53,10 +81,10 @@ void notificaAllFronts(ponlineusers users, int count, char nome[], int id, int p
 	union sigval val;
 	val.sival_int = 3;
 			
-
+	strcpy(mensagem.message, text);
+	
 	for (int i = 0; i < count; i++)
 	{
-
 		if (pid != (users + i)->pid)
 		{
 			sigqueue((users + i)->pid, SIGUSR1, val);
@@ -68,7 +96,6 @@ void notificaAllFronts(ponlineusers users, int count, char nome[], int id, int p
 				printf("\n\033[31mERRO nao foi possivel abrir o fifo do User [%d]\n", (users + i)->pid);
 				exit(1);
 			}
-			sprintf(mensagem.message, "O Utilizador %s comprou o item %d", nome, id);
 			int s2 = write(fd_frontend, &mensagem, sizeof(msg));
 			close(fd_frontend);
 		}
@@ -139,6 +166,18 @@ int deleteOnlineUser(ponlineusers users, char *remove, int rpid, int *count)
 	return pid;
 }
 
+int getUserPid(ponlineusers users, int count, char name[]){
+	if (count == 0)
+	{
+		printf("\033[31m> Não há niguém logado\033[0m\n");
+		return -1;
+	}
+	for (int i = 0; i < count; i++)
+		if (strcmp(name, (users + i)->nome) == 0)
+			return (users + i)->pid;
+	return 0;
+}
+
 int loadItemsFile(pitems leilao, char *filename, int *count)
 {
 	// guarda o nome do ficheiro dos items
@@ -190,6 +229,21 @@ int updateItemsFile(pitems leilao, int count)
 		fprintf(f, "%d %s %s %d %d %d %s %s\n", (leilao + i)->id, (leilao + i)->nome, (leilao + i)->categoria, (leilao + i)->preco, (leilao + i)->preco_ja, (leilao + i)->duracao, (leilao + i)->vendedor, (leilao + i)->licitador);
 
 	fclose(f);
+}
+
+int verifyItems(pitems leilao, int* count, pstring output){
+	int y=0;
+
+	for(int i=0; i < *count; i++){
+		if((leilao+i)->duracao == 0){
+			sprintf((output+y)->text, "%d %s %s %s %d", (leilao+i)->id, (leilao+i)->nome, (leilao+i)->vendedor, (leilao+i)->licitador, (leilao+i)->ofertamax);
+			y++;
+			deleteItem(leilao, (leilao+i)->id, count);
+		}
+	}
+		
+	return y;
+			
 }
 
 int countItems(pitems leilao, int count, int type, char filter[], int valor)
@@ -403,14 +457,4 @@ void printProms(pproms promotores, int count)
 	for (int i = 0; i < count; i++)
 		printf("> Promotor [%d] : %s", i + 1, (promotores + i)->nome);
 	printf("\n");
-}
-
-int printTime()
-{
-
-	time_t mytime;
-	mytime = time(NULL);
-	struct tm tm = *localtime(&mytime);
-
-	return (tm.tm_hour * 3600) + tm.tm_sec + (tm.tm_min * 60);
 }

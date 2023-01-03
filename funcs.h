@@ -85,17 +85,33 @@ struct proms{
 int getId();
 // Retorna o id para o novo item
 
+
+int loadTime(); 
+// Inicializa o tempo do sistema com base no ficheiro CONFIG
+// Retorna      o valor do tempo
+//              0 caso nao exista o ficheiro CONFIG
+
+
+void updateTime(int new);
+// Atualiza o valor do tempo do ficheiro CONFIG
+
+
 void printHelp_Back();
 // Imprime toda a informacao sobre os comandos do BACKEND
+
 
 void printHelp_Front();
 // Imprime toda a informacao sobre os comandos do FRONTEND		
 
+
 void closeAllFronts(ponlineusers users, int count);
 // Fecha todos os frontends
 
-void notificaAllFronts(ponlineusers users, int count, char nome[], int id, int pid);
+
+void notificaAllFronts(ponlineusers users, int count, char text[], int pid);
 // Envia uma notificacao para todos os Frontends
+// pid e usado para filtrar o utilizador para qual nao sera enviada a mensagem
+
 
 int countWords(char* string, int len);
 // Le a string e conta as palavras que a mesma contem
@@ -111,6 +127,7 @@ int addOnlineUser(ponlineusers users, onlineuser new, int* count);
 //          1 caso ja esteja logado
 //         -1 caso tenha atingido o max de utilizadores
 
+
 int deleteOnlineUser(ponlineusers users, char* remove, int rpid, int* count);
 // Remove o ultilizador da lista
 // Retorna  pid dele
@@ -118,7 +135,14 @@ int deleteOnlineUser(ponlineusers users, char* remove, int rpid, int* count);
 //         -1 caso nao esteja ninguem logado
 
 
-int loadItemsFile(pitems leilao, char * filename, int* count);
+int getUserPid(ponlineusers users, int count, char name[]);
+// Encontra o utilizador pelo seu nome
+// Retorna  pid do user
+//          0 caso nao tenho encontrado ninguem
+//         -1 caso nao esteja ninguem logado
+
+
+int loadItemsFile(pitems leilao, char* filename, int* count);
 // Le o ficheiro de items
 // Guarda os items na estrututra leilao
 // Retorna    o numero de items lidos
@@ -127,6 +151,11 @@ int loadItemsFile(pitems leilao, char * filename, int* count);
 
 int updateItemsFile(pitems leilao, int count);
 // Atualiza o ficheiro de items
+
+
+int verifyItems(pitems leilao, int* count, pstring output);
+// Verifica se o tempo de algum item já acabou
+// Retorna      o numero de items expirados/vendidos
 
 
 int countItems(pitems leilao, int count, int type, char filter[], int valor);
@@ -168,10 +197,6 @@ int buyItem(pitems leilao, int* count, int id, int oferta, char* licitador);
 //              1 caso tenha sido feita uma licitação
 //              2 caso da licitação feita ser abaixo do preço do item 
 //             -1 caso nao encontre item
-
-
-int printTime(); 
-// Imprime a hora atual em segundos
 
 
 int loadPromotoresFile(pproms promotores, char * filename, int* count);
