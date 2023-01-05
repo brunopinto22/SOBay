@@ -206,8 +206,10 @@ int main()
 				printf("\033[35m\n> Tempo do sistema: %ds\033[0m\n", systemtime);
 			else if (strcmp(command, "help") == 0)
 				printHelp_Back();
-			else if (strcmp(command, "close") == 0)
+			else if (strcmp(command, "close") == 0){
+				updateItemsFile(leilao, count_items);
 				closeBack();
+			}
 			else
 				printf("\nERRO - comando nao existe\n");
 
