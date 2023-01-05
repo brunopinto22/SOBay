@@ -15,21 +15,15 @@
 #include "users_lib.h"
 
 // vars globais
-#define BACK_FIFO "BACKFIFO"
-#define FRONT_FIFO "FRONTFIFO%d"
+#define BACK_FIFO "BACKFIFO"				// nome do FIFO do Backend
+#define FRONT_FIFO "FRONTFIFO%d"		// nome do FIFO do Frontend
 #define RD 0
 #define WR 1
-#define MAX_USERS 20
-#define MAX_PROMOTORES 10
-#define MAX_ITEMS 30
+#define MAX_USERS 20								// maximo de utilizadores do sistema
+#define MAX_PROMOTORES 10						// maximo de promotores do sistema
+#define MAX_ITEMS 30								// maximo de items do sistema
 
 // estruturas
-typedef struct dataID dataID;
-struct dataID{
-    pid_t pid;
-    int id;
-};
-
 typedef struct string strings, *pstring;
 struct string{
 
