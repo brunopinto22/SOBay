@@ -47,5 +47,6 @@ In the terminal use the following command:
 * `time` : prints the system time in seconds
 * `help` : prints a command list
 * `exit` :  closes the frontend and notifies the backend
+<br><br>
 
-##
+## How it Works ⚙

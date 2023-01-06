@@ -51,7 +51,7 @@ int isUserValid(char * username, char * password);
 // Verifica se o utilizador existe (se estava entre os que foram lidos por loadUsersFile) e a password está certa 
 // Retorna   -1 em caso de erro
 //            0 se o utilizador não existir/password inválida
-//            1 se o utilizador existe e apassword está certa
+//            1 se o utilizador existe e a password está certa
 
 
 int getUserBalance(char * username);
