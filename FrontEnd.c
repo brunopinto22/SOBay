@@ -21,12 +21,10 @@ void handlesig(int s, siginfo_t *i, void *v)
 			msg mensagem;
 			mensagem.pid = PID;
 			strcpy(mensagem.command, "exit");
-			int fd_backend = open(BACK_FIFO, O_WRONLY);
 
-			s = write(fd_backend, &mensagem, sizeof(msg));
-			if (s <= 0)
-				printf("\n\033[31mERRO no envio\n");
-			close(fd_backend);
+			s = sendto(mensagem, BACK_FIFO); // envia mensagem
+			if(s < 0)
+				printf("\n\033[31mERRO no envio\n\033[0m");
 		}
 
 		close(fd_frontend);
@@ -51,8 +49,11 @@ void handlesig(int s, siginfo_t *i, void *v)
 int main(int argc, char **argv)
 {
 	setbuf(stdout, NULL);
-	int s, res, size;
+	int value, s, res, size;
 	fd_set fdsf;
+	char string[150], command[7], arguments[150];
+	msg mensagem, resposta;
+	int valor, id, duracao;
 	struct timeval timeout;
 
 	// verificacao da formatacao
@@ -70,9 +71,6 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	char string[150], command[7], arguments[150];
-	msg mensagem, resposta;
-	int valor, id, duracao;
 
 	mensagem.pid = getpid();
 	strcpy(mensagem.command, "login");
@@ -81,30 +79,32 @@ int main(int argc, char **argv)
 
 	// abrir fifo do backend
 	int fd_backend = open(BACK_FIFO, O_WRONLY);
-	if (fd_backend == -1)
-	{
+	if (fd_backend == -1){
 		printf("\n\033[31mERRO o servidor não está a correr\033[0m\n");
 		close(fd_frontend);
 		unlink(nomeFifoFront);
 		exit(1);
 	}
-	s = write(fd_backend, &mensagem, sizeof(msg));
-	if (s <= 0)
-		printf("\n\033[31mERRO no envio\n");
-	close(fd_backend);
+	// envia mensagem
+	s = sendto(mensagem, BACK_FIFO); 
+	if(s < 0)
+		printf("\n\033[31mERRO no envio\n\033[0m");
 
 	// receber a resposta
 	fd_frontend = open(nomeFifoFront, O_RDONLY);
-	if (fd_frontend == -1)
-	{
-		printf("\n\033[31mERRO nao foi possivel abrir o fifo\n");
-		return 1;
+	if (fd_frontend == -1){
+		printf("\n\033[31mERRO não foi possivel abrir o fifo\n");
+		close(fd_frontend);
+		unlink(nomeFifoFront);
+		exit(1);
 	}
 	read(fd_frontend, &resposta, sizeof(msg));
 
-	if (resposta.value == 1)
-	{
+	if (resposta.value == 1){
 		printf("%s", resposta.message);
+		close(fd_frontend);
+		unlink(nomeFifoFront);
+		exit(1);
 		return 1;
 	}
 
@@ -131,330 +131,168 @@ int main(int argc, char **argv)
 		strcpy(mensagem.command, command);
 		strcpy(mensagem.arguments, arguments);
 
+		value = verifyCmdFront(command, arguments); // verifica comando
+
 		// verificação do tipo de comando
-		if (strcmp(command, "sell") == 0)
-		{
-			if (countWords(arguments, strlen(arguments)) != 5)
-				printf("\n\033[31mERRO na formatação: sell <nome-item> <categoria> <preço-base> <preço-compre-já> <duração>\033[0m\n");
+		if(value == 1){
+			strcat(arguments, " ");
+			strcat(arguments, mensagem.user);
+
+			// envia mensagem
+			s = sendto(mensagem, BACK_FIFO); 
+			if(s < 0)
+				printf("\n\033[31mERRO no envio\n\033[0m");
+
+			// receber a resposta
+			resposta = recivefrom(nomeFifoFront);
+			if(resposta.value == -5){
+				printf("\n\033[31mERRO na leitura\n\033[0m");
+				return 1;
+			}
+
+			if (resposta.value == 0)
+				printf("\n\033[32mProduto Adicionado com sucesso\033[0m\n");
 			else
-			{
-				item i;
-				strcat(arguments, " ");
-				strcat(arguments, mensagem.user);
-				strcat(arguments, " -");
-				strcpy(mensagem.arguments, arguments);
-				if (sscanf(arguments, "%s %s %d %d %d %s %s", i.nome, i.categoria, &i.preco, &i.preco_ja, &i.duracao, i.vendedor, i.licitador) != 0)
-				{
+				printf("\n\033[31mErro a adicionar o produto\033[0m\n");
 
-					int fd_backend = open(BACK_FIFO, O_WRONLY);
+		} else if(value == -1){ // erro de formatacao
+			printf("\n\033[31mERRO na formatação: sell <nome-item> <categoria> <preço-base> <preço-compre-já> <duração>\033[0m\n");
 
-					s = write(fd_backend, &mensagem, sizeof(msg));
-					if (s <= 0)
-						printf("\n\033[31mERRO no envio\n");
-					close(fd_backend);
+		} else if(value == 2 || value == 3 || value == 4 || value == 5 || value == 6){
 
-					// receber a resposta
-					int fd_frontend = open(nomeFifoFront, O_RDONLY);
-					if (fd_frontend == -1)
-					{
-						printf("\n\033[31mERRO nao foi possivel abrir o fifo\n");
-						return 1;
-					}
-					read(fd_frontend, &resposta, sizeof(msg));
+			// envia mensagem
+			s = sendto(mensagem, BACK_FIFO); 
+			if(s < 0)
+				printf("\n\033[31mERRO no envio\n\033[0m");
 
-					if (resposta.value == 0)
-					{
-						printf("\n\033[32mProduto Adicionado com sucesso\033[0m\n");
-					}
-					else
-						printf("\nErro a adicionar o produto\n");
-				}
-				else
-					printf("\n\033[31mERRO na formatação: sell <nome-item> <categoria> <preço-base> <preço-compre-já> <duração>\033[0m\n");
+			// receber a resposta
+			resposta = recivefrom(nomeFifoFront);
+			if(resposta.value == -5){
+				printf("\n\033[31mERRO na leitura\n\033[0m");
+				return 1;
 			}
-		}
-		else if (strcmp(command, "list") == 0)
-		{
-			if (countWords(arguments, strlen(arguments)) != 0)
-				printf("\n\033[31mERRO na formatação: list \033[0m\n");
+
+			if (resposta.value == 0)
+				printf("\033[31m%s\033[0m", resposta.message);
 			else
-			{
-				int fd_backend = open(BACK_FIFO, O_WRONLY);
-				s = write(fd_backend, &mensagem, sizeof(msg));
-				if (s <= 0)
-					printf("\n\033[31mERRO no envio\n");
-				close(fd_backend);
+				for (int i = 0; i < resposta.value; i++)
+					printf("%s", resposta.output[i].text);
+			 
+		} else if(value == -2){ // erro de formatacao
+			printf("\n\033[31mERRO na formatação: list \033[0m\n");
 
-				// receber a resposta
-				int fd_frontend = open(nomeFifoFront, O_RDONLY);
-				if (fd_frontend == -1)
-				{
-					printf("\n\033[31mERRO nao foi possivel abrir o fifo\n");
-					return 1;
-				}
-				read(fd_frontend, &resposta, sizeof(msg));
+		} else if(value == -3){ // erro de formatacao
+			printf("\n\033[31mERRO na formatação: licat <categoria>\033[0m\n");
 
-				if (resposta.value == 0)
-					printf("\033[31m%s\033[0m", resposta.message);
-				else
-					for (int i = 0; i < resposta.value; i++)
-						printf("%s", resposta.output[i].text);
+		} else if(value == -4){ // erro de formatacao
+			printf("\n\033[31mERRO na formatação: lisel <username-do-vendedor>\033[0m\n");
+
+		} else if(value == -5){ // erro de formatacao
+			printf("\n\033[31mERRO na formatação: lival <preço-máximo>\033[0m\n");
+
+		} else if(value == -6){ // erro de formatacao
+			printf("\n\033[31mERRO na formatação: litime <hora-em-segundos>\033[0m\n");
+
+		} else if(value == 7){
+			sscanf(arguments, "%d %d", &mensagem.id_offer, &mensagem.offer);
+
+			// envia mensagem
+			s = sendto(mensagem, BACK_FIFO); 
+			if(s < 0)
+				printf("\n\033[31mERRO no envio\n\033[0m");
+
+			// receber a resposta
+			resposta = recivefrom(nomeFifoFront);
+			if(resposta.value == -5){
+				printf("\n\033[31mERRO na leitura\n\033[0m");
+				return 1;
 			}
-		}
-		else if (strcmp(command, "licat") == 0)
-		{
-			if (countWords(arguments, strlen(arguments)) != 1)
-			{
-				printf("\n\033[31mERRO na formatação: licat <categoria>\033[0m\n");
-			}
+
+			if (resposta.value == 0)
+				printf("\n\033[32mComprou o item %d\033[0m\n", resposta.id_offer);
+			else if (resposta.value == 1)
+				printf("\n\033[32mLicitou o item %d com %d€\033[0m\n", resposta.id_offer, resposta.offer);
+			else if(resposta.value == -2)
+				printf("\n\033[31mNão tem fundos suficientes para a licitação\033[0m\n");
 			else
-			{
-				int fd_backend = open(BACK_FIFO, O_WRONLY);
-				s = write(fd_backend, &mensagem, sizeof(msg));
-				if (s <= 0)
-					printf("\n\033[31mERRO no envio\n");
-				close(fd_backend);
+				printf("\n\033[31mLicitação inválida\033[0m\n");
+			
+		} else if(value == -7){ // erro de formatacao
+			printf("\n\033[31mERRO na formatação: buy <id> <valor>\033[0m\n");
 
-				// receber a resposta
-				int fd_frontend = open(nomeFifoFront, O_RDONLY);
-				if (fd_frontend == -1)
-				{
-					printf("\n\033[31mERRO nao foi possivel abrir o fifo\n");
-					return 1;
-				}
-				read(fd_frontend, &resposta, sizeof(msg));
+		} else if(value == 8){
+			// envia mensagem
+			s = sendto(mensagem, BACK_FIFO); 
+			if(s < 0)
+				printf("\n\033[31mERRO no envio\n\033[0m");
 
-				if (resposta.value == 0)
-					printf("\033[31m%s\033[0m", resposta.message);
-				else
-					for (int i = 0; i < resposta.value; i++)
-						printf("%s", resposta.output[i].text);
+			// receber a resposta
+			resposta = recivefrom(nomeFifoFront);
+			if(resposta.value == -5){
+				printf("\n\033[31mERRO na leitura\n\033[0m");
+				return 1;
 			}
-		}
-		else if (strcmp(command, "lisel") == 0)
-		{
-			if (countWords(arguments, strlen(arguments)) != 1)
-				printf("\n\033[31mERRO na formatação: lisel <username-do-vendedor>\033[0m\n");
+
+			printf("\n\033[32mSaldo: %d€\033[0m\n", resposta.cash);
+
+		} else if(value == -8){ // erro de formatacao
+			printf("\n\033[31mERRO na formatação: cash\033[0m\n");
+
+		} else if(value == 9){
+			sscanf(arguments, "%d", &mensagem.valor_add);
+
+			// envia mensagem
+			s = sendto(mensagem, BACK_FIFO);
+			if(s < 0)
+				printf("\n\033[31mERRO no envio\n\033[0m");
+
+			// receber a resposta
+			resposta = recivefrom(nomeFifoFront);
+			if(resposta.value == -5){
+				printf("\n\033[31mERRO na leitura\n\033[0m");
+				return 1;
+			}
+
+			if (resposta.value == 0)
+				printf("\n\033[32mSaldo adicionado com sucesso\033[0m\n");
 			else
-			{
-				int fd_backend = open(BACK_FIFO, O_WRONLY);
-				s = write(fd_backend, &mensagem, sizeof(msg));
-				if (s <= 0)
-					printf("\n\033[31mERRO no envio\n");
-				close(fd_backend);
+				printf("\n\033[31mErro a adicionar o saldo\033[0m\n");
+			
+		} else if(value == -9){ // erro de formatacao
+			printf("\n\033[31mERRO na formatação: add <valor>\033[0m\n");
 
-				// receber a resposta
-				int fd_frontend = open(nomeFifoFront, O_RDONLY);
-				if (fd_frontend == -1)
-				{
-					printf("\n\033[31mERRO nao foi possivel abrir o fifo\n");
-					return 1;
-				}
-				read(fd_frontend, &resposta, sizeof(msg));
+		} else if(value == 10){
+			s = sendto(mensagem, BACK_FIFO); // envia mensagem
+			if(s < 0)
+				printf("\n\033[31mERRO no envio\n\033[0m");
 
-				if (resposta.value == 0)
-					printf("\033[31m%s\033[0m", resposta.message);
-				else
-					for (int i = 0; i < resposta.value; i++)
-						printf("%s", resposta.output[i].text);
+			// receber a resposta
+			resposta = recivefrom(nomeFifoFront);
+			if(resposta.value == -5){
+				printf("\n\033[31mERRO na leitura\n\033[0m");
+				return 1;
 			}
-		}
-		else if (strcmp(command, "lival") == 0)
-		{
-			if (countWords(arguments, strlen(arguments)) != 1)
-				printf("\n\033[31mERRO na formatação: lival <preço-máximo>\033[0m\n");
-			else
-			{
-				int fd_backend = open(BACK_FIFO, O_WRONLY);
-				s = write(fd_backend, &mensagem, sizeof(msg));
-				if (s <= 0)
-					printf("\n\033[31mERRO no envio\n");
-				close(fd_backend);
+			printf("\033[35m\n> Tempo do sistema: %ds\033[0m\n", resposta.value);
 
-				// receber a resposta
-				int fd_frontend = open(nomeFifoFront, O_RDONLY);
-				if (fd_frontend == -1)
-				{
-					printf("\n\033[31mERRO nao foi possivel abrir o fifo\n");
-					return 1;
-				}
-				read(fd_frontend, &resposta, sizeof(msg));
+		} else if(value == -10){ // erro de formatacao
+			printf("\n\033[31mERRO na formatação: time\033[0m\n");
 
-				if (resposta.value == 0)
-					printf("\033[31m%s\033[0m", resposta.message);
-				else
-					for (int i = 0; i < resposta.value; i++)
-						printf("%s", resposta.output[i].text);
-			}
-		}
-		else if (strcmp(command, "litime") == 0)
-		{
-			if (countWords(arguments, strlen(arguments)) != 1)
-				printf("\n\033[31mERRO na formatação: litime <hora-em-segundos>\033[0m\n");
-			else
-			{
-				int fd_backend = open(BACK_FIFO, O_WRONLY);
-				s = write(fd_backend, &mensagem, sizeof(msg));
-				if (s <= 0)
-					printf("\n\033[31mERRO no envio\n");
-				close(fd_backend);
-
-				// receber a resposta
-				int fd_frontend = open(nomeFifoFront, O_RDONLY);
-				if (fd_frontend == -1)
-				{
-					printf("\n\033[31mERRO nao foi possivel abrir o fifo\n");
-					return 1;
-				}
-				read(fd_frontend, &resposta, sizeof(msg));
-
-				if (resposta.value == 0)
-					printf("\033[31m%s\033[0m", resposta.message);
-				else
-					for (int i = 0; i < resposta.value; i++)
-						printf("%s", resposta.output[i].text);
-			}
-		}
-		else if (strcmp(command, "time") == 0)
-		{
-			if (countWords(arguments, strlen(arguments)) != 0)
-				printf("\n\033[31mERRO na formatação: time\033[0m\n");
-			else
-			{
-				int fd_backend = open(BACK_FIFO, O_WRONLY);
-				s = write(fd_backend, &mensagem, sizeof(msg));
-				if (s <= 0)
-					printf("\n\033[31mERRO no envio\n");
-				close(fd_backend);
-
-				// receber a resposta
-				int fd_frontend = open(nomeFifoFront, O_RDONLY);
-				if (fd_frontend == -1)
-				{
-					printf("\n\033[31mERRO nao foi possivel abrir o fifo\n");
-					return 1;
-				}
-				read(fd_frontend, &resposta, sizeof(msg));
-				printf("\033[35m\n> Tempo do sistema: %ds\033[0m\n", resposta.value);
-			}
-		}
-		else if (strcmp(command, "buy") == 0)
-		{
-			if (countWords(arguments, strlen(arguments)) != 2)
-				printf("\n\033[31mERRO na formatação: buy <id> <valor>\033[0m\n");
-			else
-			{
-				if (sscanf(arguments, "%d %d", &mensagem.id_offer, &mensagem.offer) != 0)
-				{
-
-					int fd_backend = open(BACK_FIFO, O_WRONLY);
-
-					s = write(fd_backend, &mensagem, sizeof(msg));
-					if (s <= 0)
-						printf("\n\033[31mERRO no envio\n");
-					close(fd_backend);
-
-					// receber a resposta
-					int fd_frontend = open(nomeFifoFront, O_RDONLY);
-					if (fd_frontend == -1)
-					{
-						printf("\n\033[31mERRO nao foi possivel abrir o fifo\n");
-						return 1;
-					}
-					read(fd_frontend, &resposta, sizeof(msg));
-
-					if (resposta.value == 0)
-					{
-						printf("\n\033[32mComprou o item %d\033[0m\n", resposta.id_offer);
-					}
-					else if (resposta.value == 1)
-					{
-						printf("\n\033[32mLicitou o item %d com %d€\033[0m\n", resposta.id_offer, resposta.offer);
-					}
-					else if(resposta.value == -2)
-					{
-						printf("\n\033[31mNão tem fundos suficientes para a licitação\033[0m\n");
-					}
-					else
-					{
-						printf("\n\033[31mLicitação inválida\033[0m\n");
-					}
-				}
-
-				else
-					printf("\n\033[31mERRO na formatação: buy <id> <valor>\033[0m\n");
-			}
-		}
-		else if (strcmp(command, "cash") == 0)
-		{
-			if (countWords(arguments, strlen(arguments)) != 0)
-				printf("\n\033[31mERRO na formatação: cash\033[0m\n");
-			else
-			{
-
-				int fd_backend = open(BACK_FIFO, O_WRONLY);
-
-				s = write(fd_backend, &mensagem, sizeof(msg));
-				if (s <= 0)
-					printf("\n\033[31mERRO no envio\n");
-				close(fd_backend);
-
-				// receber a resposta
-				int fd_frontend = open(nomeFifoFront, O_RDONLY);
-				if (fd_frontend == -1)
-				{
-					printf("\n\033[31mERRO nao foi possivel abrir o fifo\n");
-					return 1;
-				}
-				read(fd_frontend, &resposta, sizeof(msg));
-				printf("\n\033[32mSaldo: %d€\033[0m\n", resposta.cash);
-
-			}
-		}
-		else if (strcmp(command, "add") == 0)
-		{
-			if (countWords(arguments, strlen(arguments)) != 1)
-				printf("\n\033[31mERRO na formatação: add <valor>\033[0m\n");
-			else
-			{
-				if (sscanf(arguments, "%d", &mensagem.valor_add) != 0)
-				{
-
-					int fd_backend = open(BACK_FIFO, O_WRONLY);
-
-					s = write(fd_backend, &mensagem, sizeof(msg));
-					if (s <= 0)
-						printf("\n\033[31mERRO no envio\n");
-					close(fd_backend);
-
-					// receber a resposta
-					int fd_frontend = open(nomeFifoFront, O_RDONLY);
-					if (fd_frontend == -1)
-					{
-						printf("\n\033[31mERRO nao foi possivel abrir o fifo\n");
-						return 1;
-					}
-					read(fd_frontend, &resposta, sizeof(msg));
-
-					if (resposta.value == 0)
-						printf("\n\033[32mSaldo adicionado com sucesso\033[0m\n");
-					else
-						printf("\n\033[31mErro a adicionar o saldo\033[0m\n");
-				}
-				else
-					printf("\n\033[31mERRO na formatação: add <valor>\033[0m\n");
-			}
-		}
-		else if (strcmp(command, "help") == 0)
+		} else if(value == 11){
 			printHelp_Front();
-		else if (strcmp(command, "exit") == 0)
-		{
+
+		} else if(value == -11){ // erro de formatacao
+			printf("\n\033[31mERRO na formatação: help\033[0m\n");
+
+		} else if(value == 12){
 			union sigval val;
 			val.sival_int = 0;
 			sigqueue(PID, SIGINT, val);
-		}
-		else
-			printf("\nERRO - comando nao existe\n");
+
+		} else if(value == -12){ // erro de formatacao
+			printf("\n\033[31mERRO na formatação: exit\033[0m\n");
+
+		} else 
+			printf("\n\033[31mERRO - Comando não existe\033[0m\n");
 
 		printf("\n>> ");
 

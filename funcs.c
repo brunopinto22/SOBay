@@ -4,10 +4,157 @@ int id = 0;
 char *itemsfilepath; // ficheiro de items
 char *promsfilepath; // ficheiro de promotores
 
-int getId()
-{
+int getId(){
 	id++;
 	return id;
+}
+
+int verifyCmdBack(char cmd[], char args[]){
+
+	if(strcmp(cmd,"users") == 0){
+		if (countWords(args, strlen(args)) != 0)
+			return -1;
+		return 1;
+
+	} else if(strcmp(cmd,"list") == 0){
+		if (countWords(args, strlen(args)) != 0)
+			return -2;
+		return 2;
+
+	} else if(strcmp(cmd,"kick") == 0){
+		if (countWords(args, strlen(args)) != 1)
+			return -3;
+		return 3;
+
+	} else if(strcmp(cmd,"prom") == 0){
+		if (countWords(args, strlen(args)) != 0)
+			return -4;
+		return 4;
+
+	} else if(strcmp(cmd,"reprom") == 0){
+		if (countWords(args, strlen(args)) != 0)
+			return -5;
+		return 5;
+
+	} else if(strcmp(cmd,"cancel") == 0){
+		if (countWords(args, strlen(args)) != 1)
+			return -6;
+		return 6;
+
+	} else if(strcmp(cmd,"time") == 0){
+		if (countWords(args, strlen(args)) != 0)
+			return -7;
+		return 7;
+
+	} else if(strcmp(cmd,"help") == 0){
+		if (countWords(args, strlen(args)) != 0)
+			return -8;
+		return 8;
+
+	} else if(strcmp(cmd,"close") == 0){
+		if (countWords(args, strlen(args)) != 0)
+			return -9;
+		return 9;
+
+	} else
+		return 0;
+
+}
+
+int verifyCmdFront(char cmd[], char args[]){
+	item i;
+	msg mensagem;
+
+	if(strcmp(cmd,"sell") == 0){
+		if((countWords(args, strlen(args)) != 5) || (sscanf(args, "%s %s %d %d %d", i.nome, i.categoria, &i.preco, &i.preco_ja, &i.duracao) == 0))
+			return -1;
+		return 1;
+
+	} else if(strcmp(cmd,"list") == 0){
+		if(countWords(args, strlen(args)) != 0)
+			return -2;
+		return 2;
+
+	} else if(strcmp(cmd,"licat") == 0){
+		if((countWords(args, strlen(args)) != 1) || (sscanf(args, "%s", i.categoria) == 0))
+			return -3;
+		return 3;
+
+	} else if(strcmp(cmd,"lisel") == 0){
+		if((countWords(args, strlen(args)) != 1) || (sscanf(args, "%s", i.vendedor) == 0))
+			return -4;
+		return 4;
+
+	} else if(strcmp(cmd,"lival") == 0){
+		if((countWords(args, strlen(args)) != 1) || (sscanf(args, "%d", &i.preco) == 0))
+			return -5;
+		return 5;
+
+	} else if(strcmp(cmd,"litime") == 0){
+		if((countWords(args, strlen(args)) != 1) || (sscanf(args, "%d", &i.duracao) == 0))
+			return -6;
+		return 6;
+
+	} else if(strcmp(cmd,"buy") == 0){
+		if((countWords(args, strlen(args)) != 2) || (sscanf(args, "%d %d", &mensagem.id_offer, &mensagem.offer) == 0))
+			return -7;
+		return 7;
+
+	} else if(strcmp(cmd,"cash") == 0){
+		if(countWords(args, strlen(args)) != 0)
+			return -8;
+		return 8;
+
+	} else if(strcmp(cmd,"add") == 0){
+		if((countWords(args, strlen(args)) != 1) || (sscanf(args, "%d", &i.preco) == 0))
+			return -9;
+		return 9;
+
+	} else if(strcmp(cmd,"time") == 0){
+		if(countWords(args, strlen(args)) != 0)
+			return -10;
+		return 10;
+
+	} else if(strcmp(cmd,"help") == 0){
+		if(countWords(args, strlen(args)) != 0)
+			return -11;
+		return 11;
+
+	} else if(strcmp(cmd,"exit") == 0){
+		if(countWords(args, strlen(args)) != 0)
+			return -12;
+		return 12;
+
+	} else
+		return 0;
+
+}
+
+int sendto(msg mensagem, char tofifo[]){
+
+	int fd = open(tofifo, O_WRONLY);
+	if(fd == -1)
+		return -1;
+	int s = write(fd, &mensagem, sizeof(msg));
+	close(fd);
+	if (s <= 0)
+		return -1;
+	return 0;
+
+}
+
+
+msg recivefrom(char fromfifo[]){
+	msg resposta;
+	resposta.value = -5;
+
+	int fd = open(fromfifo, O_RDONLY);
+	if(fd == -1)
+		return resposta;
+	read(fd, &resposta, sizeof(msg));
+
+	return resposta;
+
 }
 
 int loadTime(){
@@ -37,8 +184,7 @@ void updateTime(int new){
 
 }
 
-void printHelp_Back()
-{
+void printHelp_Back(){
 	printf("\n>> Lista de Comandos <<\n");
 	printf("\t▹ users\t\t: mostra todos os utilizadores online\n");
 	printf("\t▹ list\t\t: lista todos os itens à venda\n");
@@ -50,8 +196,7 @@ void printHelp_Back()
 	printf("\t▹ close\t\t: fecha o backend\n");
 }
 
-void printHelp_Front()
-{
+void printHelp_Front(){
 	printf("\n>> Lista de Comandos <<\n");
 	printf("\t▹ sell\t: coloca um item à venda\n");
 	printf("\t▹ buy\t: licitar um item\n");
@@ -60,8 +205,7 @@ void printHelp_Front()
 	printf("\t▹ exit\t: fecha o frontend\n");
 }
 
-void closeAllFronts(ponlineusers users, int count)
-{
+void closeAllFronts(ponlineusers users, int count){
 	printf("\n\033[35m> A Fechar Frontends : [%d]\033[0m\n", count);
 
 	union sigval val;
@@ -71,8 +215,7 @@ void closeAllFronts(ponlineusers users, int count)
 		sigqueue((users + i)->pid, SIGUSR1, val);
 }
 
-void notificaAllFronts(ponlineusers users, int count, char text[], int pid)
-{
+void notificaAllFronts(ponlineusers users, int count, char text[], int pid){
 	char nomeFifoFront[100];
 	msg mensagem;
 	mensagem.value = -2;
@@ -83,10 +226,8 @@ void notificaAllFronts(ponlineusers users, int count, char text[], int pid)
 			
 	strcpy(mensagem.message, text);
 	
-	for (int i = 0; i < count; i++)
-	{
-		if (pid != (users + i)->pid)
-		{
+	for (int i = 0; i < count; i++){
+		if (pid != (users + i)->pid){
 			sigqueue((users + i)->pid, SIGUSR1, val);
 			// resposta ao frontend
 			sprintf(nomeFifoFront, FRONT_FIFO, (users + i)->pid);
@@ -102,8 +243,7 @@ void notificaAllFronts(ponlineusers users, int count, char text[], int pid)
 	}
 }
 
-int countWords(char *string, int len)
-{
+int countWords(char *string, int len){
 	if (len == 0)
 		return 0;
 
@@ -114,10 +254,8 @@ int countWords(char *string, int len)
 	return count;
 }
 
-void printOnlineUsers(ponlineusers users, int count)
-{
-	if (count == 0)
-	{
+void printOnlineUsers(ponlineusers users, int count){
+	if (count == 0){
 		printf("\033[31m> Não há niguém logado\033[0m\n");
 		return;
 	}
@@ -126,8 +264,7 @@ void printOnlineUsers(ponlineusers users, int count)
 		printf("\033[33m\t▹ User [%d] %s\n\033[0m", (users + i)->pid, (users + i)->nome);
 }
 
-int addOnlineUser(ponlineusers users, onlineuser new, int *count)
-{
+int addOnlineUser(ponlineusers users, onlineuser new, int *count){
 
 	if (*count == MAX_USERS)
 		return -1;
@@ -143,19 +280,15 @@ int addOnlineUser(ponlineusers users, onlineuser new, int *count)
 	return 0;
 }
 
-int deleteOnlineUser(ponlineusers users, char *remove, int rpid, int *count)
-{
-	if (*count == 0)
-	{
+int deleteOnlineUser(ponlineusers users, char *remove, int rpid, int *count){
+	if (*count == 0){
 		printf("\033[31m> Não há niguém logado\033[0m\n");
 		return -1;
 	}
 
 	int pid = 0;
-	for (int i = 0, y = 0; i < *count; i++, y++)
-	{
-		if (strcmp(remove, (users + i)->nome) == 0 || (users + i)->pid == rpid)
-		{
+	for (int i = 0, y = 0; i < *count; i++, y++){
+		if (strcmp(remove, (users + i)->nome) == 0 || (users + i)->pid == rpid){
 			y++;
 			pid = (users + i)->pid;
 		}
@@ -167,8 +300,7 @@ int deleteOnlineUser(ponlineusers users, char *remove, int rpid, int *count)
 }
 
 int getUserPid(ponlineusers users, int count, char name[]){
-	if (count == 0)
-	{
+	if (count == 0){
 		printf("\033[31m> Não há niguém logado\033[0m\n");
 		return -1;
 	}
@@ -184,8 +316,7 @@ int loadItemsFile(pitems leilao, char *filename, int *count)
 	itemsfilepath = filename;
 
 	FILE *f = fopen(itemsfilepath, "r+");
-	if (f == NULL)
-	{
+	if (f == NULL){
 		return 0;
 	}
 
@@ -197,15 +328,13 @@ int loadItemsFile(pitems leilao, char *filename, int *count)
 	// reabertura do ficheiro
 	fclose(f);
 	f = fopen(itemsfilepath, "rw");
-	if (f == NULL)
-	{
+	if (f == NULL){
 		printf("\n\033[31mErro nao foi possivel abrir o ficheiro: %s\033[0m\n", filename);
 		return -1;
 	}
 
 	// guardar a estrutura de dados
-	for (int i = 0; i < *count && i < MAX_ITEMS; i++)
-	{
+	for (int i = 0; i < *count && i < MAX_ITEMS; i++){
 		fgets(aux, sizeof(aux), f);
 		sscanf(aux, "%d %s %s %d %d %d %s %s %d", &(leilao + i)->id, (leilao + i)->nome, (leilao + i)->categoria, &(leilao + i)->preco, &(leilao + i)->preco_ja, &(leilao + i)->duracao, (leilao + i)->vendedor, (leilao + i)->licitador, &(leilao + i)->ofertamax);
 		getId();
@@ -215,12 +344,10 @@ int loadItemsFile(pitems leilao, char *filename, int *count)
 	return *count;
 }
 
-int updateItemsFile(pitems leilao, int count)
-{
+int updateItemsFile(pitems leilao, int count){
 
 	FILE *f = fopen(itemsfilepath, "w");
-	if (f == NULL)
-	{
+	if (f == NULL){
 		printf("\n\033[31mErro nao foi possivel abrir o ficheiro: %s\033[0m\n", itemsfilepath);
 		return -1;
 	}
@@ -246,35 +373,29 @@ int verifyItems(pitems leilao, int* count, pstring output){
 			
 }
 
-int countItems(pitems leilao, int count, int type, char filter[], int valor)
-{
+int countItems(pitems leilao, int count, int type, char filter[], int valor){
 	int counter = 0;
 
-	if (type == 0)
-	{
+	if (type == 0){
 		for (int i = 0; i < count; i++)
 			counter++;
 	}
-	else if (type == 1) // filtra por categoria
-	{
+	else if (type == 1){ // filtra por categoria
 		for (int i = 0; i < count; i++)
 			if (strcmp((leilao + i)->categoria, filter) == 0)
 				counter++;
 	}
-	else if (type == 2) // filtra por vendedor
-	{
+	else if (type == 2){ // filtra por vendedor
 		for (int i = 0; i < count; i++)
 			if (strcmp((leilao + i)->vendedor, filter) == 0)
 				counter++;
 	}
-	else if (type == 3) // mostra todos os items ate um valor
-	{
+	else if (type == 3){ // mostra todos os items ate um valor
 		for (int i = 0; i < count; i++)
 			if ((leilao + i)->preco <= valor)
 				counter++;
 	}
-	else if (type == 4) // mostra todos os items ate uma determinada hora
-	{
+	else if (type == 4){ // mostra todos os items ate uma determinada hora
 		for (int i = 0; i < count; i++)
 			if ((leilao + i)->duracao <= valor)
 				counter++;
@@ -283,8 +404,7 @@ int countItems(pitems leilao, int count, int type, char filter[], int valor)
 	return counter;
 }
 
-void printItems(pitems leilao, int count, int type, char filter[], int valor, pstring output)
-{
+void printItems(pitems leilao, int count, int type, char filter[], int valor, pstring output){
 
 	if (type == 0)
 	{
@@ -349,7 +469,8 @@ int addItem(pitems leilao, char *aux, int *count)
 
 	int i = *count;
 	(leilao + i)->id = getId();
-	sscanf(aux, "%s %s %d %d %d %s %s", (leilao + i)->nome, (leilao + i)->categoria, &(leilao + i)->preco, &(leilao + i)->preco_ja, &(leilao + i)->duracao, (leilao + i)->vendedor, (leilao + i)->licitador);
+	sscanf(aux, "%s %s %d %d %d %s", (leilao + i)->nome, (leilao + i)->categoria, &(leilao + i)->preco, &(leilao + i)->preco_ja, &(leilao + i)->duracao, (leilao + i)->vendedor);
+	strcpy((leilao + i)->licitador, "-");
 	// guarda no ficheiro
 	FILE *file = fopen(itemsfilepath, "a");
 	if (file == NULL)

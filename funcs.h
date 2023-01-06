@@ -15,15 +15,21 @@
 #include "users_lib.h"
 
 // vars globais
-#define BACK_FIFO "BACKFIFO"				// nome do FIFO do Backend
-#define FRONT_FIFO "FRONTFIFO%d"		// nome do FIFO do Frontend
+#define BACK_FIFO "BACKFIFO"
+#define FRONT_FIFO "FRONTFIFO%d"
 #define RD 0
 #define WR 1
-#define MAX_USERS 20								// maximo de utilizadores do sistema
-#define MAX_PROMOTORES 10						// maximo de promotores do sistema
-#define MAX_ITEMS 30								// maximo de items do sistema
+#define MAX_USERS 20
+#define MAX_PROMOTORES 10
+#define MAX_ITEMS 30
 
 // estruturas
+typedef struct dataID dataID;
+struct dataID{
+    pid_t pid;
+    int id;
+};
+
 typedef struct string strings, *pstring;
 struct string{
 
@@ -84,6 +90,31 @@ int loadTime();
 // Inicializa o tempo do sistema com base no ficheiro CONFIG
 // Retorna      o valor do tempo
 //              0 caso nao exista o ficheiro CONFIG
+
+
+int verifyCmdBack(char cmd[], char args[]);
+// Verifica se o comando e valido
+// Retorna      o valor correspondente a funcao
+//              o negativo do valor correspondente a funcao em caso de erro de formatacao
+//              0 caso nao exista
+
+
+int verifyCmdFront(char cmd[], char args[]);;
+// Verifica se o comando e valido
+// Retorna      o valor correspondente a funcao
+//              o negativo do valor correspondente a funcao em caso de erro de formatacao
+//              0 caso nao exista
+
+
+int sendto(msg mensagem, char tofifo[]);
+// Envia uma mensagem para um fifo indicado
+// Retorna      0 se correr tudo bem
+//             -1 se houver algum erro
+
+
+msg recivefrom(char fromfifo[]);
+// Le uma mensagem de um fifo indicado
+// Retorna      a mensagem recebida
 
 
 void updateTime(int new);
