@@ -138,6 +138,10 @@ void notificaAllFronts(ponlineusers users, int count, char text[], int pid);
 // pid e usado para filtrar o utilizador para qual nao sera enviada a mensagem
 
 
+void notificaFront(int pid, char text[]);
+// Envia uma notificacao para um Frontend
+
+
 int countWords(char* string, int len);
 // Le a string e conta as palavras que a mesma contem
 
@@ -202,6 +206,12 @@ void printItems(pitems leilao, int count, int type, char filter[], int valor, ps
 //                      2 - filtra por vendedor
 //                      3 - mostra todos os items ate a um valor
 //                      4 - mostra todos os items ate uma determinada hora
+
+
+item getItembyId(pitems leilao, int count, int id);
+// Encontra o item pelo seu id
+// Retorna              uma copia do item
+//                      um item com o id = -1
 
 
 int addItem(pitems leilao, char *aux, int* count);

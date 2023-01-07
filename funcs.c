@@ -243,6 +243,25 @@ void notificaAllFronts(ponlineusers users, int count, char text[], int pid){
 	}
 }
 
+void notificaFront(int pid, char text[]){
+
+	char nomeFifoFront[100];
+	msg mensagem;
+	mensagem.value = -2;
+	strcpy(mensagem.message, text);
+	int size;
+
+	union sigval val;
+	val.sival_int = 4;
+
+	sigqueue(pid, SIGUSR1, val);
+	// envia mensagem
+	size = sendto(mensagem, nomeFifoFront); 
+	if(size < 0)
+		printf("\n\033[31mERRO não foi possível abrir o fifo do User [%d]\n", pid);
+
+}
+
 int countWords(char *string, int len){
 	if (len == 0)
 		return 0;
@@ -459,6 +478,20 @@ void printItems(pitems leilao, int count, int type, char filter[], int valor, ps
 			}
 		}
 	}
+}
+
+item getItembyId(pitems leilao, int count, int id){
+	item p;
+	p.id = -1;
+
+	for(int i=0; i<count; i++)
+		if((leilao+i)->id == id){
+			p.id = (leilao+i)->id;
+			strcpy(p.nome, (leilao+i)->nome);
+			strcpy(p.vendedor, (leilao+i)->vendedor);
+		}
+	
+	return p;
 }
 
 int addItem(pitems leilao, char *aux, int *count)
