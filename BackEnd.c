@@ -44,6 +44,7 @@ int main()
 	systemtime = loadTime();
 
 	setbuf(stdout, NULL);
+	setbuf(stdin, NULL);
 
 	char *FPROMOTORES = "FPROMOTORES";
 	// Verificar se existe
@@ -276,6 +277,9 @@ int main()
 						}
 					}
 				} else if(value == 1){
+					strcat(mensagem.arguments, " ");
+					strcat(mensagem.arguments, mensagem.user);
+
 					if (addItem(leilao, mensagem.arguments, &count_items) == 0){
 						mensagem.value = 0;
 						printf("\n\033[33m> User [%d] : Licitou <%s>\033[0m\n", mensagem.pid, mensagem.arguments);
@@ -388,15 +392,24 @@ int main()
 						printf("\n\033[31m> User [%d] : Não tem fundos para a licitação\033[0m\n", mensagem.pid);
 					}
 					else{
+						auxit = getItembyId(leilao, count_items, mensagem.id_offer);
 						int i = buyItem(leilao, &count_items, mensagem.id_offer, mensagem.offer, mensagem.user);
 						if (i == 0){
 							mensagem.value = 0;
 							printf("\n\033[33m> User [%d] : Comprou o item %d\033[0m\n", mensagem.pid, mensagem.id_offer);
 							updateItemsFile(leilao, count_items);
+
+							// atualiza o saldo do licitador
 							updateUserBalance(mensagem.user, balance - mensagem.offer);
-							saveUsersFile(FUSERS);
 							sprintf(mensagem.message, "O Utilizador %s comprou o item %d", mensagem.user, mensagem.id_offer);
 							notificaAllFronts(online, online_count, mensagem.message, mensagem.pid);
+
+							// atualiza o saldo do vendedor
+							balance = getUserBalance(auxit.vendedor);
+							updateUserBalance(auxit.vendedor, balance + mensagem.offer);
+
+							saveUsersFile(FUSERS);
+
 						}
 						else if (i == 1){
 							mensagem.value = 1;
@@ -483,36 +496,38 @@ int main()
 			for(int i=0; i<rm; i++){
 				sscanf(output[i].text, "%d %s %s %s %d", &auxit.id, auxit.nome, auxit.vendedor, auxit.licitador, &auxit.ofertamax);
 
-				if(auxit.ofertamax == 0)
+				if(auxit.ofertamax == 0) // nao foi vendido
 					sprintf(mensagem.message, "O Item %s expirou e não foi vendido", auxit.nome);
-				else{
+				else{ // foi vendido
+
 					balance = getUserBalance(auxit.licitador);
 
 					if(balance - auxit.ofertamax > 0){
 						sprintf(mensagem.message, "Comprou o item %d", auxit.id);
 						printf("\n\033[33m> User [%d] : Comprou o item %d\033[0m\n", mensagem.pid, mensagem.id_offer);
 						updateUserBalance(auxit.licitador, balance - auxit.ofertamax);
-						saveUsersFile(FUSERS);
 						mensagem.pid = getUserPid(online, online_count, auxit.licitador);
+
+						// atualiza o saldo do vendedor
+						balance = getUserBalance(auxit.vendedor);
+						printf("\n - %d - %s -", balance, auxit.vendedor);
+						updateUserBalance(auxit.vendedor, balance + auxit.ofertamax);
+
+						saveUsersFile(FUSERS);
 
 						union sigval val;
 						val.sival_int = 4;
 						sigqueue(mensagem.pid, SIGUSR1, val);
 
-						// mensagem ao frontend
+						// envia mensagem
 						sprintf(nomeFifoFront, FRONT_FIFO, mensagem.pid);
-						int fd_frontend = open(nomeFifoFront, O_WRONLY);
-						if (fd_frontend == -1)
-						{
+						size = sendto(mensagem, nomeFifoFront); 
+						if(size < 0)
 							printf("\n\033[31mERRO não foi possível abrir o fifo do User [%d]\n", mensagem.pid);
-							exit(1);
-						}
-						int s2 = write(fd_frontend, &mensagem, sizeof(msg));
-						close(fd_frontend);
+
 						sprintf(mensagem.message, "O Utilizador %s comprou o item %d", auxit.licitador, auxit.id);
 					}
 
-					
 				}
 
 				mensagem.pid = getUserPid(online, online_count, auxit.licitador);
@@ -524,83 +539,5 @@ int main()
 		}
 
 	} while (1);
-
-	/*//--------------------------------------------------------------------------------------------------------------
-	// Meta 1 testes
-	int i;
-	char username[50], userpass[50];
-	int pid, meu_pid, pid_filho;
-	int canal[2];
-	int n;
-	char buf[200];
-	printf("deseja testar que funcionalidade?\n\n1-utilizadores\n2-promotor\n3-items\n4-comandos\n\n>> ");
-	scanf("%d", &i);
-	switch (i) {
-
-			case 1:
-					if( loadUsersFile(FUSERS) == -1 ){ printf("\n\033[31m%s\033[0m\n", getLastErrorText()); exit(1);}
-					// pede os dados ao utilizador
-					printf("login: ");
-					scanf("%s %s", username, userpass);
-					if(isUserValid(username, userpass) == -1){ printf("\n\033[31m%s\033[0m\n", getLastErrorText()); exit(1);}
-					else if(isUserValid(username, userpass) == 0){ printf("\n\033[31mErro conta nao existe\033[0m\n"); exit(1);}
-					return 0;
-
-			case 2:
-					meu_pid = getpid();
-					printf("\nBackend>> O meu PID: %d\n", meu_pid);
-
-					if( loadPromotoresFile(FPROMOTORES) == -1 )
-							return -1;
-
-					// verificacao da criacao do pipe
-					if(pipe(canal) < 0){
-							printf("\n\033[31mErro na criacao do pipe\033[0m\n");
-							exit(1);
-					}
-
-					pid = fork();
-					if(pid == -1){
-							printf("\n\033[31mErro no fork()\033[0m\n");
-							exit(1);
-
-					} else if(pid == 0){ // Promotor:
-
-							pid_filho = getpid(); // pid do promotor
-							printf("\nPromotor>> O meu PID: %d\n", pid_filho);
-
-							// redirecionar stdout para o canal
-							close(STDOUT_FILENO);
-							dup(canal[1]);
-							close(canal[0]);
-
-							execlp("./promotor_oficial", "./promotor_oficial", NULL);
-					} else{ // Backend:
-
-							while(1){
-									// ler o canal
-									n = read(canal[0], buf, 199);
-									buf[n] = 0;
-									fprintf(stdout,"Promotor>> %s", buf);
-									// limpar a memoria
-									fflush(stdout);
-									memset(buf, 0, 199);
-							}
-
-					}
-					return 0;
-
-			case 3:
-					if( loadItemsFile(FITEMS) == -1 )
-							exit(1);
-					printItems(0," ");
-					return 0;
-
-			case 4:
-			break;
-	}
-	setbuf(stdin,NULL);
-
- //--------------------------------------------------------------------------------------------------------------
-*/
+	
 }

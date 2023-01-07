@@ -135,8 +135,6 @@ int main(int argc, char **argv)
 
 		// verificação do tipo de comando
 		if(value == 1){
-			strcat(arguments, " ");
-			strcat(arguments, mensagem.user);
 
 			// envia mensagem
 			s = sendto(mensagem, BACK_FIFO); 
