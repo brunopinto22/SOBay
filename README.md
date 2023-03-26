@@ -48,5 +48,3 @@ In the terminal use the following command:
 * `help` : prints a command list
 * `exit` :  closes the frontend and notifies the backend
 <br><br>
-
-## How it Works ⚙
