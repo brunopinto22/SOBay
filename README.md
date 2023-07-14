@@ -2,6 +2,8 @@
 
 # SoBay
 Auction System for Linux, with a server/client architecture.
+
+<img alt="GitHub Language Count" src="https://img.shields.io/github/languages/count/brunopinto22/SOBay" /> <img alt="" src="https://img.shields.io/github/repo-size/brunopinto22/SOBay" /> <img alt="GitHub Last Commit" src="https://img.shields.io/github/last-commit/brunopinto22/SOBay" />
 <br><br>
 ## Features 📑
 * Backend: The application responsible for responding to all the requests from the clients
