@@ -7,7 +7,7 @@ Auction System for Linux, with a server/client architecture.
 <br><br>
 ## Features 📑
 * Backend: The application responsible for responding to all the requests from the clients
-* Frontend: The application where all clients login to participate in the action
+* Frontend: The application where all clients login to participate in the auction
 ###### No Frontend can be initialized without the Backend being ON
 
 <br>
